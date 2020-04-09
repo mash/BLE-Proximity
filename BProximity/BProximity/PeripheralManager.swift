@@ -14,14 +14,14 @@ typealias PeripheralManagerOnWrite = (CBCentral, Characteristic, Data)->(Bool)
 
 class PeripheralManager :NSObject {
     private var started :Bool = false
-    private let peripheralManager :CBPeripheralManager
+    private var peripheralManager :CBPeripheralManager!
     private var onRead :PeripheralManagerOnRead?
     private var onWrite :PeripheralManagerOnWrite?
 
     override init() {
-        peripheralManager = CBPeripheralManager(delegate: nil, queue: nil)
+        let options = [CBPeripheralManagerOptionRestoreIdentifierKey: "PeripheralManager"]
         super.init()
-        peripheralManager.delegate = self
+        peripheralManager = CBPeripheralManager(delegate: self, queue: nil, options: options)
     }
 
     func start() {
@@ -42,6 +42,7 @@ class PeripheralManager :NSObject {
         let write = CBMutableCharacteristic(type: Characteristic.WriteId.toCBUUID(), properties: .writeWithoutResponse, value: nil, permissions: .writeable)
         let service = CBMutableService(type: Service.BProximity.toCBUUID(), primary: true)
         service.characteristics = [read, write]
+        peripheralManager.removeAllServices()
         peripheralManager.add(service)
 
         let advertisementData = [
@@ -71,10 +72,6 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
         if peripheral.state == .poweredOn && started {
             startAdvertising()
         }
-    }
-
-    func peripheralManager(_ peripheral: CBPeripheralManager, willRestoreState dict: [String : Any]) {
-        log("dict=\(dict)")
     }
 
     func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
@@ -114,5 +111,9 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
             }
         }
         peripheralManager.respond(to: requests[0], withResult: success ? .success : .unlikelyError)
+    }
+
+    func peripheralManager(_ peripheral: CBPeripheralManager, willRestoreState dict: [String : Any]) {
+        log("dict=\(dict)")
     }
 }

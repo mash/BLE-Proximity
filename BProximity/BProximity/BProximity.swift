@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreBluetooth
+import UserNotifications
 
 public enum Service :String {
     case BProximity = "8E99298E-65D6-4AF7-9074-731C66E01AF9" // from `uuidgen`
@@ -67,11 +68,20 @@ public class BProximity :NSObject {
     private var userIds :[UserId] = []
     private var peerIds :[UserId] = []
 
-    public static func start() {
+    public static func didFinishLaunching() {
         log()
         instance = BProximity()
+    }
+
+    public static func start() {
+        log()
         instance.peripheralManager.start()
         instance.centralManager.start()
+
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert]) { granted, error in
+            log("granted: \(granted), error: \(String(describing: error))")
+        }
     }
 
     public static func stop() {
@@ -100,6 +110,7 @@ public class BProximity :NSObject {
                     if let userId = UserId(data: data) {
                         log("Written Successful by \(userId)")
                         self.peerIds.append(userId)
+                        self.debugNotify(identifier: "Written", message: "Written Successful by \(userId)")
                         return true
                     }
                     log("data to UserId parse failed: \(data)")
@@ -107,15 +118,17 @@ public class BProximity :NSObject {
                 }
             }
         centralManager = CentralManager(services: [Service.BProximity.toCBUUID()])
-            .readValue(from: .ReadId)
-            .writeValue(to: .WriteId, value: { [unowned self] in self.userId.data() })
-            .didUpdateValue { [unowned self] (ch, value, error) in
-                log("didUpdateValue ch=\(ch), value\(String(describing: value)), error=\(String(describing: error))")
+            .appendCommand(command: .Read(from: .ReadId, didUpdate: { [unowned self] (ch, value, error) in
                 if let val = value, let userId = UserId(data: val) {
                     log("Read Successful from \(userId)")
                     self.peerIds.append(userId)
+                    self.debugNotify(identifier: "Read", message: "Read Successful from \(userId)")
                 }
-            }
+            }))
+            .appendCommand(command: .Write(to: .WriteId, value: { [unowned self] in self.userId.data() }))
+            // TODO add a command to periodically read from the near peripheral
+            // This will make CentralManager re-discover the same peripheral and re-scan the services and re-read and re-write and loop. Let's not do that
+            // .appendCommand(command: .Cancel(callback: { [unowned self] peripheral in self.centralManager.disconnect(peripheral) }))
         userIds = [ randomUserId() ]
     }
 
@@ -128,7 +141,19 @@ public class BProximity :NSObject {
     func randomUserId() -> UserId {
         // https://github.com/apple/swift-evolution/blob/master/proposals/0202-random-unification.md#random-number-generator
         // This is cryptographically random
-        UInt64.random(in: 0 ... UInt64.max)
+        return UInt64.random(in: 0 ... UInt64.max)
+    }
+
+    // TODO delete this
+    func debugNotify(identifier :String, message :String) {
+        let content = UNMutableNotificationContent()
+        content.title = message
+        let notification = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(notification) { (er) in
+            if er != nil {
+                log("notification error: \(er!)")
+            }
+        }
     }
 }
 

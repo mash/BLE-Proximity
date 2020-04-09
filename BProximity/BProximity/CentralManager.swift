@@ -10,24 +10,23 @@ import Foundation
 import CoreBluetooth
 
 enum Command {
-    case Read(from :Characteristic)
+    case Read(from :Characteristic, didUpdate :DidUpdateValue)
     case Write(to :Characteristic, value :()->(Data))
+    case Cancel(callback :(Peripheral)->())
 }
 
 class CentralManager :NSObject {
     private var started :Bool = false
-    private let centralManager :CBCentralManager
+    private var centralManager :CBCentralManager!
     private let services :[CBUUID]!
     private var commands :[Command] = []
     private var peripherals :[UUID:Peripheral] = [:]
-    private var didUpdateValue :DidUpdateValue?
 
     init(services :[CBUUID]) {
-        let options = [CBCentralManagerOptionShowPowerAlertKey: 1]
-        centralManager = CBCentralManager(delegate: nil, queue: nil, options: options)
         self.services = services
         super.init()
-        centralManager.delegate = self
+        let options = [CBCentralManagerOptionShowPowerAlertKey: 1, CBCentralManagerOptionRestoreIdentifierKey: "CentralManager"] as [String : Any]
+        centralManager = CBCentralManager(delegate: self, queue: nil, options: options)
     }
 
     func start() {
@@ -51,19 +50,18 @@ class CentralManager :NSObject {
         centralManager.stopScan()
     }
 
-    func readValue(from :Characteristic) -> CentralManager {
-        self.commands.append(.Read(from: from))
+    func appendCommand(command :Command) -> CentralManager {
+        self.commands.append(command)
         return self // for chaining
     }
 
-    func writeValue(to :Characteristic, value :@escaping ()->(Data)) -> CentralManager {
-        self.commands.append(.Write(to: to, value: value))
-        return self
+    func disconnect(_ peripheral :Peripheral) {
+        centralManager.cancelPeripheralConnection(peripheral.peripheral)
     }
 
-    func didUpdateValue(_ callback:@escaping (Characteristic, Data?, Error?)->()) -> CentralManager {
-        didUpdateValue = callback
-        return self
+    func addPeripheral(_ peripheral :CBPeripheral) {
+        let p = Peripheral(peripheral: peripheral, services: services, commands: commands)
+        peripherals[peripheral.identifier] = p
     }
 }
 
@@ -92,8 +90,7 @@ extension CentralManager :CBCentralManagerDelegate {
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         log("peripheral=\(peripheral.identifier), rssi=\(RSSI)")
         if peripherals[peripheral.identifier] == nil {
-            let p = Peripheral(peripheral: peripheral, services: services, commands: commands, callback: didUpdateValue)
-            peripherals[peripheral.identifier] = p
+            addPeripheral(peripheral)
             central.connect(peripheral, options: nil)
         }
         // TODO record max RSSI
@@ -101,5 +98,16 @@ extension CentralManager :CBCentralManagerDelegate {
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         log("peripheral=\(peripheral), error=\(String(describing: error))")
+    }
+
+    func centralManager(_ central: CBCentralManager, willRestoreState dict: [String : Any]) {
+        log("dict=\(dict)")
+
+        // Hmm, no we want to reconnect to them and re-record the proximity event
+//        if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
+//            peripherals.forEach { (peripheral) in
+//                addPeripheral(peripheral)
+//            }
+//        }
     }
 }
