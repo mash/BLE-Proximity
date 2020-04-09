@@ -83,7 +83,7 @@ public class BProximity :NSObject {
     public override init() {
         super.init()
         peripheralManager = PeripheralManager(delegate: self)
-        centralManager = CentralManager(services: [Service.BProximity.toCBUUID()], delegate: self)
+        centralManager = CentralManager(services: [Service.BProximity.toCBUUID()])
             .readValue(from: .ReadId)
             .writeValue(to: .WriteId, value: { [unowned self] in self.userId.data() })
             .didUpdateValue { [unowned self] (ch, value, error) in
@@ -103,10 +103,6 @@ public class BProximity :NSObject {
 }
 
 extension BProximity :PeripheralManagerDelegate {
-
-}
-
-extension BProximity :CentralManagerDelegate {
 
 }
 

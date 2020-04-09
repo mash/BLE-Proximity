@@ -7,9 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C724255B243F703C000770D1 /* BProximity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C7402AF5243E1EB100E48523 /* BProximity.framework */; };
+		C724255C243F703C000770D1 /* BProximity.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C7402AF5243E1EB100E48523 /* BProximity.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C7402AFC243E206100E48523 /* AskPermissionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7402AFB243E206100E48523 /* AskPermissionViewController.swift */; };
 		C7902454243E1CE3000863D1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7902453243E1CE3000863D1 /* AppDelegate.swift */; };
-		C7902456243E1CE3000863D1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7902455243E1CE3000863D1 /* SceneDelegate.swift */; };
 		C7902458243E1CE3000863D1 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7902457243E1CE3000863D1 /* ViewController.swift */; };
 		C790245B243E1CE3000863D1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C7902459243E1CE3000863D1 /* Main.storyboard */; };
 		C790245D243E1CE4000863D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C790245C243E1CE4000863D1 /* Assets.xcassets */; };
@@ -40,12 +41,25 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		C724255D243F703C000770D1 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C724255C243F703C000770D1 /* BProximity.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		C7402AEF243E1EB100E48523 /* BProximity.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = BProximity.xcodeproj; path = ../BProximity/BProximity.xcodeproj; sourceTree = "<group>"; };
 		C7402AFB243E206100E48523 /* AskPermissionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskPermissionViewController.swift; sourceTree = "<group>"; };
 		C7902450243E1CE3000863D1 /* ExampleDevelopment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExampleDevelopment.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7902453243E1CE3000863D1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		C7902455243E1CE3000863D1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		C7902457243E1CE3000863D1 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		C790245A243E1CE3000863D1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		C790245C243E1CE4000863D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -58,12 +72,20 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C724255B243F703C000770D1 /* BProximity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C7242559243F6F3F000770D1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		C7402AF0243E1EB100E48523 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -79,6 +101,7 @@
 				C7402AEF243E1EB100E48523 /* BProximity.xcodeproj */,
 				C7902452243E1CE3000863D1 /* Example */,
 				C7902451243E1CE3000863D1 /* Products */,
+				C7242559243F6F3F000770D1 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -96,7 +119,6 @@
 				C7902461243E1CE4000863D1 /* Info.plist */,
 				C7902453243E1CE3000863D1 /* AppDelegate.swift */,
 				C7402AFB243E206100E48523 /* AskPermissionViewController.swift */,
-				C7902455243E1CE3000863D1 /* SceneDelegate.swift */,
 				C7902457243E1CE3000863D1 /* ViewController.swift */,
 				C790245C243E1CE4000863D1 /* Assets.xcassets */,
 				C790245E243E1CE4000863D1 /* LaunchScreen.storyboard */,
@@ -116,6 +138,7 @@
 				C790244C243E1CE3000863D1 /* Sources */,
 				C790244D243E1CE3000863D1 /* Frameworks */,
 				C790244E243E1CE3000863D1 /* Resources */,
+				C724255D243F703C000770D1 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -204,7 +227,6 @@
 				C7902458243E1CE3000863D1 /* ViewController.swift in Sources */,
 				C7402AFC243E206100E48523 /* AskPermissionViewController.swift in Sources */,
 				C7902454243E1CE3000863D1 /* AppDelegate.swift in Sources */,
-				C7902456243E1CE3000863D1 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -358,7 +380,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DFC995SFJ6;
-				INFOPLIST_FILE = ExampleDevelopment/Info.plist;
+				INFOPLIST_FILE = ../Example/Example/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -376,7 +399,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DFC995SFJ6;
-				INFOPLIST_FILE = ExampleDevelopment/Info.plist;
+				INFOPLIST_FILE = ../Example/Example/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

@@ -24,7 +24,7 @@ class ViewController: UIViewController {
         if (!askedPermission) {
             // Ask for permission
             let storyboard = UIStoryboard(name: "Main", bundle: nil)
-            let vc = storyboard.instantiateViewController(identifier: "AskPermissionViewController") as AskPermissionViewController
+            let vc = storyboard.instantiateViewController(withIdentifier: "AskPermissionViewController") as! AskPermissionViewController
             vc.input = .Bluetooth
             vc.output = { (vc) in
                 BProximity.start()
