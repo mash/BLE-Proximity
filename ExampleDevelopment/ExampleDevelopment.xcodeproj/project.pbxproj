@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C7402AFC243E206100E48523 /* AskPermissionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7402AFB243E206100E48523 /* AskPermissionViewController.swift */; };
 		C7902454243E1CE3000863D1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7902453243E1CE3000863D1 /* AppDelegate.swift */; };
 		C7902456243E1CE3000863D1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7902455243E1CE3000863D1 /* SceneDelegate.swift */; };
 		C7902458243E1CE3000863D1 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7902457243E1CE3000863D1 /* ViewController.swift */; };
@@ -41,6 +42,7 @@
 
 /* Begin PBXFileReference section */
 		C7402AEF243E1EB100E48523 /* BProximity.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = BProximity.xcodeproj; path = ../BProximity/BProximity.xcodeproj; sourceTree = "<group>"; };
+		C7402AFB243E206100E48523 /* AskPermissionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskPermissionViewController.swift; sourceTree = "<group>"; };
 		C7902450243E1CE3000863D1 /* ExampleDevelopment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExampleDevelopment.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7902453243E1CE3000863D1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C7902455243E1CE3000863D1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -91,13 +93,14 @@
 		C7902452243E1CE3000863D1 /* Example */ = {
 			isa = PBXGroup;
 			children = (
+				C7902461243E1CE4000863D1 /* Info.plist */,
 				C7902453243E1CE3000863D1 /* AppDelegate.swift */,
+				C7402AFB243E206100E48523 /* AskPermissionViewController.swift */,
 				C7902455243E1CE3000863D1 /* SceneDelegate.swift */,
 				C7902457243E1CE3000863D1 /* ViewController.swift */,
-				C7902459243E1CE3000863D1 /* Main.storyboard */,
 				C790245C243E1CE4000863D1 /* Assets.xcassets */,
 				C790245E243E1CE4000863D1 /* LaunchScreen.storyboard */,
-				C7902461243E1CE4000863D1 /* Info.plist */,
+				C7902459243E1CE3000863D1 /* Main.storyboard */,
 			);
 			name = Example;
 			path = ../Example/Example;
@@ -199,6 +202,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C7902458243E1CE3000863D1 /* ViewController.swift in Sources */,
+				C7402AFC243E206100E48523 /* AskPermissionViewController.swift in Sources */,
 				C7902454243E1CE3000863D1 /* AppDelegate.swift in Sources */,
 				C7902456243E1CE3000863D1 /* SceneDelegate.swift in Sources */,
 			);
