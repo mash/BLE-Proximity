@@ -15,11 +15,13 @@ enum Command {
 }
 
 class CentralManager :NSObject {
+    var started :Bool = false
     let centralManager :CBCentralManager
     let services :[CBUUID]!
     var commands :[Command] = []
     var peripherals :[Peripheral] = []
-    var updateValueCallback :DidUpdateValue?
+    var didUpdateValue :DidUpdateValue?
+
     init(services :[CBUUID]) {
         let options = [CBCentralManagerOptionShowPowerAlertKey: 1]
         centralManager = CBCentralManager(delegate: nil, queue: nil, options: options)
@@ -47,7 +49,7 @@ class CentralManager :NSObject {
     }
 
     func didUpdateValue(_ callback:@escaping (Characteristic, Data?, Error?)->()) -> CentralManager {
-        updateValueCallback = callback
+        didUpdateValue = callback
         return self
     }
 }
@@ -55,17 +57,15 @@ class CentralManager :NSObject {
 extension CentralManager :CBCentralManagerDelegate {
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         log("state=\(central.state)")
-        if central.state == .poweredOn {
+        if central.state == .poweredOn && started {
             startScanning()
         }
     }
-
-    // MARK: - CBCentralManagerDelegate
-
+    
     func centralManager(central: CBCentralManager, didConnectPeripheral peripheral: CBPeripheral) {
         log("peripheral=\(peripheral)")
 
-        let p = Peripheral(peripheral: peripheral, services: services, commands: commands, callback: updateValueCallback)
+        let p = Peripheral(peripheral: peripheral, services: services, commands: commands, callback: didUpdateValue)
         peripherals.append(p)
     }
 

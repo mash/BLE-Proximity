@@ -9,14 +9,14 @@
 import Foundation
 import CoreBluetooth
 
-enum Service :String {
+public enum Service :String {
     case BProximity = "8E99298E-65D6-4AF7-9074-731C66E01AF9" // from `uuidgen`
-    func toCBUUID() -> CBUUID {
+    public func toCBUUID() -> CBUUID {
         return CBUUID(string: self.rawValue)
     }
 }
 
-enum Characteristic :String, CustomStringConvertible {
+public enum Characteristic :String, CustomStringConvertible {
     case ReadId = "9F565547-7415-4EF7-8CDD-E2E9674EF033" // from `uuidgen`
     case WriteId = "B222EBFF-99B4-4BC4-A2E4-717AEF9966A6" // from `uuidgen`
 
@@ -31,7 +31,7 @@ enum Characteristic :String, CustomStringConvertible {
     func toCBUUID() -> CBUUID {
         return CBUUID(string: self.rawValue)
     }
-    var description :String {
+    public var description :String {
         switch self {
         case .ReadId:
             return "ReadId"
@@ -70,19 +70,43 @@ public class BProximity :NSObject {
     public static func start() {
         log()
         instance = BProximity()
-        instance.started = true
+        instance.peripheralManager.started = true
+        instance.centralManager.started = true
     }
 
     public static func stop() {
         log()
-        instance.started = false
+        instance.peripheralManager.started = false
+        instance.centralManager.started = false
         instance.peripheralManager.stopAdvertising()
         instance.centralManager.stopScan()
     }
 
     public override init() {
         super.init()
-        peripheralManager = PeripheralManager(delegate: self)
+
+        peripheralManager = PeripheralManager()
+            .onRead { [unowned self] (peripheral, ch) in
+                switch ch {
+                case .ReadId:
+                    return self.userId.data()
+                case .WriteId:
+                    return nil
+                }
+            }
+            .onWrite { [unowned self] (peripheral, ch, data) in
+                switch ch {
+                case .ReadId:
+                    return false
+                case .WriteId:
+                    if let userId = UserId(data: data) {
+                        self.peerIds.append(userId)
+                        return true
+                    }
+                    log("data to UserId parse failed: \(data)")
+                    return false
+                }
+            }
         centralManager = CentralManager(services: [Service.BProximity.toCBUUID()])
             .readValue(from: .ReadId)
             .writeValue(to: .WriteId, value: { [unowned self] in self.userId.data() })
@@ -92,7 +116,7 @@ public class BProximity :NSObject {
                     self.peerIds.append(userId)
                 }
             }
-        userIds = []
+        userIds = [ randomUserId() ]
     }
 
     var userId :UserId {
@@ -100,10 +124,12 @@ public class BProximity :NSObject {
             return userIds.first!
         }
     }
-}
 
-extension BProximity :PeripheralManagerDelegate {
-
+    func randomUserId() -> UserId {
+        // https://github.com/apple/swift-evolution/blob/master/proposals/0202-random-unification.md#random-number-generator
+        // This is cryptographically random
+        UInt64.random(in: 0 ... UInt64.max)
+    }
 }
 
 extension CBManagerState :CustomStringConvertible {
