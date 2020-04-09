@@ -13,10 +13,10 @@ typealias PeripheralManagerOnRead = (CBCentral, Characteristic)->(Data?)
 typealias PeripheralManagerOnWrite = (CBCentral, Characteristic, Data)->(Bool)
 
 class PeripheralManager :NSObject {
-    var started :Bool = false
-    let peripheralManager :CBPeripheralManager
-    var onRead :PeripheralManagerOnRead?
-    var onWrite :PeripheralManagerOnWrite?
+    private var started :Bool = false
+    private let peripheralManager :CBPeripheralManager
+    private var onRead :PeripheralManagerOnRead?
+    private var onWrite :PeripheralManagerOnWrite?
 
     override init() {
         peripheralManager = CBPeripheralManager(delegate: nil, queue: nil)
@@ -24,14 +24,33 @@ class PeripheralManager :NSObject {
         peripheralManager.delegate = self
     }
 
-    func startAdvertising() {
+    func start() {
+        started = true
+        startAdvertising()
+    }
+
+    func stop() {
+        started = false
+        stopAdvertising()
+    }
+
+    private func startAdvertising() {
+        guard peripheralManager.state == .poweredOn else { return }
+
+        // no pairing/bonding
+        let read = CBMutableCharacteristic(type: Characteristic.ReadId.toCBUUID(), properties: .read, value: nil, permissions: .readable)
+        let write = CBMutableCharacteristic(type: Characteristic.WriteId.toCBUUID(), properties: .writeWithoutResponse, value: nil, permissions: .writeable)
+        let service = CBMutableService(type: Service.BProximity.toCBUUID(), primary: true)
+        service.characteristics = [read, write]
+        peripheralManager.add(service)
+
         let advertisementData = [
             CBAdvertisementDataServiceUUIDsKey: [Service.BProximity.toCBUUID()]
         ]
         peripheralManager.startAdvertising(advertisementData)
     }
 
-    func stopAdvertising() {
+    private func stopAdvertising() {
         peripheralManager.stopAdvertising()
     }
 
@@ -65,7 +84,7 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
         log("request=\(request)")
 
-        guard let ch = Characteristic.fromCBCharacteristic(c: request.characteristic), let onRead = onRead else {
+        guard let ch = Characteristic.fromCBCharacteristic(request.characteristic), let onRead = onRead else {
             peripheralManager.respond(to: request, withResult: .requestNotSupported)
             return
         }
@@ -87,7 +106,7 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
 
         var success = false
         requests.forEach { (request) in
-            guard let ch = Characteristic.fromCBCharacteristic(c: request.characteristic), let onWrite = onWrite, let val = request.value else {
+            guard let ch = Characteristic.fromCBCharacteristic(request.characteristic), let onWrite = onWrite, let val = request.value else {
                 return
             }
             if onWrite(request.central, ch, val) {

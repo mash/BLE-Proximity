@@ -20,6 +20,17 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>We use Bluetooth in the background to recognize who you were close to</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>We use Bluetooth to recognize who you were close to</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -41,9 +52,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>We use Bluetooth in the background to recognize who you were close to</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>We use Bluetooth to recognize who you were close to</string>
 </dict>
 </plist>

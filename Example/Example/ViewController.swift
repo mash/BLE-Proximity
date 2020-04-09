@@ -10,9 +10,7 @@ import UIKit
 import BProximity
 
 class ViewController: UIViewController {
-    var askedPermission :Bool {
-        return false
-    }
+    var askedPermission :Bool = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,7 +20,8 @@ class ViewController: UIViewController {
         super.viewDidAppear(animated)
 
         if (!askedPermission) {
-            // Ask for permission
+            askedPermission = true
+
             let storyboard = UIStoryboard(name: "Main", bundle: nil)
             let vc = storyboard.instantiateViewController(withIdentifier: "AskPermissionViewController") as! AskPermissionViewController
             vc.input = .Bluetooth

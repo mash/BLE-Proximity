@@ -18,25 +18,26 @@ typealias DidUpdateValue = (Characteristic, Data?, Error?)->()
 let PeripheralDidUpdateValueNotification = "PeripheralDidUpdateValueNotification"
 let PeripheralCharactersticUserInfoKey = "PeripheralCharactersticUserInfoKey"
 
-class Peripheral: NSObject, CBPeripheralDelegate {
+class Peripheral: NSObject {
     private let peripheral :CBPeripheral!
+    private let services :[CBUUID]
     private let commands :[Command]
     private let callback :DidUpdateValue?
     public var id :UUID {
         return peripheral.identifier
     }
 
-    init(peripheral: CBPeripheral, services :[CBUUID]?, commands :[Command], callback :DidUpdateValue?) {
+    init(peripheral: CBPeripheral, services :[CBUUID], commands :[Command], callback :DidUpdateValue?) {
         self.peripheral = peripheral
         self.commands = commands
+        self.services = services
         self.callback = callback
         super.init()
         self.peripheral.delegate = self
-        self.peripheral.discoverServices(services)
     }
 
-    deinit {
-        log()
+    func discoverServices() {
+        peripheral.discoverServices(services)
     }
 
     func dispatch() {
@@ -98,11 +99,11 @@ class Peripheral: NSObject, CBPeripheralDelegate {
         }
         return nil
     }
+}
 
-    // MARK: - CBPeripheralDelegate
-
+extension Peripheral :CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        log("services=\(String(describing: peripheral.services))")
+        log("services=\(String(describing: peripheral.services)), error=\(String(describing: error))")
         guard let services = peripheral.services else { return }
         for service in services {
             peripheral.discoverCharacteristics(nil, for: service)
@@ -116,5 +117,12 @@ class Peripheral: NSObject, CBPeripheralDelegate {
         }
 
         dispatch()
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        log("peripheral=\(peripheral.identifier), ch=\(String(describing: Characteristic.fromCBCharacteristic(characteristic)))")
+        if let callback = callback, let ch = Characteristic.fromCBCharacteristic(characteristic) {
+            callback(ch, characteristic.value, error)
+        }
     }
 }

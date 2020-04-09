@@ -39,7 +39,7 @@ public enum Characteristic :String, CustomStringConvertible {
             return "WriteId"
         }
     }
-    static func fromCBCharacteristic(c :CBCharacteristic) -> Characteristic? {
+    static func fromCBCharacteristic(_ c :CBCharacteristic) -> Characteristic? {
         return Characteristic(rawValue: c.uuid.uuidString)
     }
 }
@@ -70,16 +70,14 @@ public class BProximity :NSObject {
     public static func start() {
         log()
         instance = BProximity()
-        instance.peripheralManager.started = true
-        instance.centralManager.started = true
+        instance.peripheralManager.start()
+        instance.centralManager.start()
     }
 
     public static func stop() {
         log()
-        instance.peripheralManager.started = false
-        instance.centralManager.started = false
-        instance.peripheralManager.stopAdvertising()
-        instance.centralManager.stopScan()
+        instance.peripheralManager.stop()
+        instance.centralManager.stop()
     }
 
     public override init() {
@@ -100,6 +98,7 @@ public class BProximity :NSObject {
                     return false
                 case .WriteId:
                     if let userId = UserId(data: data) {
+                        log("Written Successful by \(userId)")
                         self.peerIds.append(userId)
                         return true
                     }
@@ -113,6 +112,7 @@ public class BProximity :NSObject {
             .didUpdateValue { [unowned self] (ch, value, error) in
                 log("didUpdateValue ch=\(ch), value\(String(describing: value)), error=\(String(describing: error))")
                 if let val = value, let userId = UserId(data: val) {
+                    log("Read Successful from \(userId)")
                     self.peerIds.append(userId)
                 }
             }

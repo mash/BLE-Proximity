@@ -15,26 +15,39 @@ enum Command {
 }
 
 class CentralManager :NSObject {
-    var started :Bool = false
-    let centralManager :CBCentralManager
-    let services :[CBUUID]!
-    var commands :[Command] = []
-    var peripherals :[Peripheral] = []
-    var didUpdateValue :DidUpdateValue?
+    private var started :Bool = false
+    private let centralManager :CBCentralManager
+    private let services :[CBUUID]!
+    private var commands :[Command] = []
+    private var peripherals :[UUID:Peripheral] = [:]
+    private var didUpdateValue :DidUpdateValue?
 
     init(services :[CBUUID]) {
         let options = [CBCentralManagerOptionShowPowerAlertKey: 1]
         centralManager = CBCentralManager(delegate: nil, queue: nil, options: options)
         self.services = services
         super.init()
+        centralManager.delegate = self
     }
 
-    func startScanning() {
+    func start() {
+        started = true
+        startScanning()
+    }
+
+    func stop() {
+        started = false
+        stopScan()
+    }
+
+    private func startScanning() {
+        guard centralManager.state == .poweredOn else { return }
+
         let options = [CBCentralManagerScanOptionAllowDuplicatesKey: NSNumber(booleanLiteral: true)]
         centralManager.scanForPeripherals(withServices: services, options: options)
     }
 
-    func stopScan() {
+    private func stopScan() {
         centralManager.stopScan()
     }
 
@@ -61,22 +74,28 @@ extension CentralManager :CBCentralManagerDelegate {
             startScanning()
         }
     }
-    
-    func centralManager(central: CBCentralManager, didConnectPeripheral peripheral: CBPeripheral) {
+
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         log("peripheral=\(peripheral)")
 
-        let p = Peripheral(peripheral: peripheral, services: services, commands: commands, callback: didUpdateValue)
-        peripherals.append(p)
+        let p = peripherals[peripheral.identifier]
+        if let p = p {
+            p.discoverServices()
+        }
     }
 
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         log("peripheral=\(peripheral), error=\(String(describing: error))")
-        peripherals = peripherals.filter { (p) -> Bool in p.id == peripheral.identifier }
+        peripherals.removeValue(forKey: peripheral.identifier)
     }
 
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        log("peripheral=\(peripheral), ad=\(advertisementData), rssi=\(RSSI)")
-        central.connect(peripheral, options: nil)
+        log("peripheral=\(peripheral.identifier), rssi=\(RSSI)")
+        if peripherals[peripheral.identifier] == nil {
+            let p = Peripheral(peripheral: peripheral, services: services, commands: commands, callback: didUpdateValue)
+            peripherals[peripheral.identifier] = p
+            central.connect(peripheral, options: nil)
+        }
         // TODO record max RSSI
     }
 
