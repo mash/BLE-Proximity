@@ -28,14 +28,17 @@ class Peripheral: NSObject {
     private let services :[CBUUID]
     private var commands :[Command]
     private var currentCommand :Command?
+    private var didUpdateValue :Characteristic.DidUpdateValue
+
     public var id :UUID {
         return peripheral.identifier
     }
 
-    init(peripheral: CBPeripheral, services :[CBUUID], commands :[Command]) {
+    init(peripheral: CBPeripheral, services :[CBUUID], commands :[Command], didUpdateValue :@escaping Characteristic.DidUpdateValue) {
         self.peripheral = peripheral
         self.commands = commands
         self.services = services
+        self.didUpdateValue = didUpdateValue
         super.init()
         self.peripheral.delegate = self
     }
@@ -57,7 +60,7 @@ class Peripheral: NSObject {
 
     func execute(_ command :Command) {
         switch command {
-        case .Read(let from, _):
+        case .Read(let from):
             if let ch = toCBCharacteristic(c12c: from) {
                 peripheral.readValue(for: ch)
             }
@@ -130,14 +133,16 @@ extension Peripheral :CBPeripheralDelegate {
         nextCommand()
     }
 
+    // This might happen regardless of calling or not calling readValue(for:)
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         log("peripheral=\(peripheral.identifier), ch=\(String(describing: Characteristic.fromCBCharacteristic(characteristic)))")
         if let ch = Characteristic.fromCBCharacteristic(characteristic) {
-            if case .Read(_, let didUpdate) = currentCommand {
-                didUpdate(ch, characteristic.value, error)
-
-                // Read complete
-                nextCommand()
+            didUpdateValue(ch, characteristic.value, error)
+            if case .Read(let readCh) = currentCommand {
+                if readCh == ch {
+                    // Read complete
+                    nextCommand()
+                }
             }
         }
     }

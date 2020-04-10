@@ -21,18 +21,13 @@
 import Foundation
 import CoreBluetooth
 
-enum Command {
-    case Read(from :Characteristic, didUpdate :(Characteristic, Data?, Error?)->())
-    case Write(to :Characteristic, value :()->(Data))
-    case Cancel(callback :(Peripheral)->())
-}
-
 class CentralManager :NSObject {
     private var started :Bool = false
     private var centralManager :CBCentralManager!
     private let services :[CBUUID]!
     private var commands :[Command] = []
     private var peripherals :[UUID:Peripheral] = [:]
+    private var didUpdateValue :Characteristic.DidUpdateValue!
 
     init(services :[CBUUID]) {
         self.services = services
@@ -67,12 +62,17 @@ class CentralManager :NSObject {
         return self // for chaining
     }
 
+    func didUpdateValue(_ callback :@escaping Characteristic.DidUpdateValue) -> CentralManager {
+        didUpdateValue = callback
+        return self
+    }
+
     func disconnect(_ peripheral :Peripheral) {
         centralManager.cancelPeripheralConnection(peripheral.peripheral)
     }
 
     func addPeripheral(_ peripheral :CBPeripheral) {
-        let p = Peripheral(peripheral: peripheral, services: services, commands: commands)
+        let p = Peripheral(peripheral: peripheral, services: services, commands: commands, didUpdateValue: didUpdateValue)
         peripherals[peripheral.identifier] = p
     }
 }

@@ -22,7 +22,14 @@ import UIKit
 import BProximity
 
 class ViewController: UIViewController {
-    var askedPermission :Bool = false
+    var askedPermission :Bool {
+        get {
+            return UserDefaults.standard.bool(forKey: "askedPermission")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "askedPermission")
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()

@@ -22,14 +22,16 @@ import Foundation
 import CoreBluetooth
 import UserNotifications
 
-public enum Service :String {
+enum Service :String {
     case BProximity = "8E99298E-65D6-4AF7-9074-731C66E01AF9" // from `uuidgen`
     public func toCBUUID() -> CBUUID {
         return CBUUID(string: self.rawValue)
     }
 }
 
-public enum Characteristic :String, CustomStringConvertible {
+enum Characteristic :String, CustomStringConvertible {
+    typealias DidUpdateValue = (Characteristic, Data?, Error?)->()
+
     case ReadId = "9F565547-7415-4EF7-8CDD-E2E9674EF033" // from `uuidgen`
     case WriteId = "B222EBFF-99B4-4BC4-A2E4-717AEF9966A6" // from `uuidgen`
 
@@ -57,7 +59,8 @@ public enum Characteristic :String, CustomStringConvertible {
     }
 }
 
-typealias UserId = UInt64
+// We dropped 32bit support, so UInt = UInt64, and is converted to NSNumber when saving to PLists
+typealias UserId = UInt
 
 extension UserId {
     func data() -> Data {
@@ -69,6 +72,59 @@ extension UserId {
         _ = Swift.withUnsafeMutableBytes(of: &value, { data.copyBytes(to: $0)} )
         self = value
     }
+    static func next() -> UserId {
+        // https://github.com/apple/swift-evolution/blob/master/proposals/0202-random-unification.md#random-number-generator
+        // This is cryptographically random
+        return UserId(UInt64.random(in: 0 ... UInt64.max))
+    }
+}
+
+typealias Ids = [[UserId:TimeInterval]]
+
+let KeepMyIdsInterval :TimeInterval = 60*60*24*7*4 // 4 weeks
+let KeepPeerIdsInterval :TimeInterval = 60*60*24*7*4 // 4 weeks
+
+extension Ids {
+    // 8Byte + 8Bytes = 16Bytes for one record.
+    // You're going to see .. max 1k people in a day.
+    // We want to keep records for 4 weeks.
+    // max: 16B x 1k x 28 = 448kBytes
+    // Well it's ok to save into UserDefaults
+    static func load(from :String) -> Ids {
+        return UserDefaults.standard.array(forKey: "MyIds") as? Ids ?? []
+    }
+    func save(to :String) {
+        UserDefaults.standard.set(self, forKey: "MyIds")
+    }
+    mutating func expire(keepInterval: TimeInterval) -> Bool {
+        let count = self.count
+
+        // Delete old entries
+        let now = Date().timeIntervalSince1970
+        self = self.filter({ (item) -> Bool in
+            let val = item.values.first! // should be a dictionary that always have one value
+            return val + keepInterval > now
+        })
+
+        // Return if we removed expired items
+        return count != self.count
+    }
+    mutating func append(_ userId :UserId) {
+        let next = [userId: Date().timeIntervalSince1970]
+        self.append(next)
+    }
+    var last :UserId {
+        let item = self.last! // at least one item should exist in the array
+        return item.keys.first!
+    }
+
+    // TODO find
+}
+
+enum Command {
+    case Read(from :Characteristic)
+    case Write(to :Characteristic, value :()->(Data))
+    case Cancel(callback :(Peripheral)->())
 }
 
 public class BProximity :NSObject {
@@ -77,8 +133,8 @@ public class BProximity :NSObject {
     private var peripheralManager :PeripheralManager!
     private var centralManager :CentralManager!
     private var started :Bool = false
-    private var userIds :[UserId] = []
-    private var peerIds :[UserId] = []
+    private var myIds :Ids!
+    private var peerIds :Ids!
 
     public static func didFinishLaunching() {
         log()
@@ -105,6 +161,16 @@ public class BProximity :NSObject {
     public override init() {
         super.init()
 
+        myIds = Ids.load(from: "") // TODO
+        _ = myIds.expire(keepInterval: KeepMyIdsInterval)
+        myIds.append(UserId.next())
+        myIds.save(to: "")
+
+        peerIds = Ids.load(from: "") // TODO
+        if peerIds.expire(keepInterval: KeepPeerIdsInterval) {
+            peerIds.save(to: "")
+        }
+
         // no pairing/bonding
         let read = CBMutableCharacteristic(type: Characteristic.ReadId.toCBUUID(), properties: .read, value: nil, permissions: .readable)
         let write = CBMutableCharacteristic(type: Characteristic.WriteId.toCBUUID(), properties: .writeWithoutResponse, value: nil, permissions: .writeable)
@@ -115,7 +181,7 @@ public class BProximity :NSObject {
             .onRead { [unowned self] (peripheral, ch) in
                 switch ch {
                 case .ReadId:
-                    return self.userId.data()
+                    return self.myIds.last.data()
                 case .WriteId:
                     return nil
                 }
@@ -128,6 +194,7 @@ public class BProximity :NSObject {
                     if let userId = UserId(data: data) {
                         log("Written Successful by \(userId)")
                         self.peerIds.append(userId)
+                        self.peerIds.save(to: "")
                         self.debugNotify(identifier: "Written", message: "Written Successful by \(userId)")
                         return true
                     }
@@ -136,30 +203,18 @@ public class BProximity :NSObject {
                 }
             }
         centralManager = CentralManager(services: [Service.BProximity.toCBUUID()])
-            .appendCommand(command: .Read(from: .ReadId, didUpdate: { [unowned self] (ch, value, error) in
+            .didUpdateValue({ [unowned self] (ch, value, error) in
                 if let val = value, let userId = UserId(data: val) {
                     log("Read Successful from \(userId)")
                     self.peerIds.append(userId)
+                    self.peerIds.save(to: "")
                     self.debugNotify(identifier: "Read", message: "Read Successful from \(userId)")
                 }
-            }))
-            .appendCommand(command: .Write(to: .WriteId, value: { [unowned self] in self.userId.data() }))
-            // TODO add a command to periodically read from the near peripheral
+            })
+            .appendCommand(command: .Read(from: .ReadId))
+            .appendCommand(command: .Write(to: .WriteId, value: { [unowned self] in self.myIds.last.data() }))
             // This will make CentralManager re-discover the same peripheral and re-scan the services and re-read and re-write and loop. Let's not do that
             // .appendCommand(command: .Cancel(callback: { [unowned self] peripheral in self.centralManager.disconnect(peripheral) }))
-        userIds = [ randomUserId() ]
-    }
-
-    var userId :UserId {
-        get {
-            return userIds.last!
-        }
-    }
-
-    func randomUserId() -> UserId {
-        // https://github.com/apple/swift-evolution/blob/master/proposals/0202-random-unification.md#random-number-generator
-        // This is cryptographically random
-        return UInt64.random(in: 0 ... UInt64.max)
     }
 
     // TODO delete this
