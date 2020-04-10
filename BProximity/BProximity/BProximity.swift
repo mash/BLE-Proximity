@@ -84,17 +84,36 @@ typealias Ids = [[UserId:TimeInterval]]
 let KeepMyIdsInterval :TimeInterval = 60*60*24*7*4 // 4 weeks
 let KeepPeerIdsInterval :TimeInterval = 60*60*24*7*4 // 4 weeks
 
+enum File :String {
+    case myIds
+    case peerIds
+    func url() -> URL {
+        let documentDirectoryUrl = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentDirectoryUrl.appendingPathComponent("\(self.rawValue).plist")
+    }
+}
 extension Ids {
     // 8Byte + 8Bytes = 16Bytes for one record.
     // You're going to see .. max 1k people in a day.
     // We want to keep records for 4 weeks.
     // max: 16B x 1k x 28 = 448kBytes
     // Well it's ok to save into UserDefaults
-    static func load(from :String) -> Ids {
-        return UserDefaults.standard.array(forKey: "MyIds") as? Ids ?? []
+    static func load(from :File) -> Ids {
+        do {
+            let data = try Data(contentsOf: from.url(), options: [])
+            return try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as! Ids
+        } catch {
+            log(error)
+        }
+        return Ids()
     }
-    func save(to :String) {
-        UserDefaults.standard.set(self, forKey: "MyIds")
+    func save(to :File) {
+        do {
+            let data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: false)
+            try data.write(to: to.url(), options: [])
+        } catch {
+            log(error)
+        }
     }
     mutating func expire(keepInterval: TimeInterval) -> Bool {
         let count = self.count
@@ -102,7 +121,7 @@ extension Ids {
         // Delete old entries
         let now = Date().timeIntervalSince1970
         self = self.filter({ (item) -> Bool in
-            let val = item.values.first! // should be a dictionary that always have one value
+            let val = item.values.first!
             return val + keepInterval > now
         })
 
@@ -161,14 +180,14 @@ public class BProximity :NSObject {
     public override init() {
         super.init()
 
-        myIds = Ids.load(from: "") // TODO
+        myIds = Ids.load(from: .myIds)
         _ = myIds.expire(keepInterval: KeepMyIdsInterval)
-        myIds.append(UserId.next())
-        myIds.save(to: "")
+        myIds.append(UserId.next()) // TODO only when some time has passed
+        myIds.save(to: .myIds)
 
-        peerIds = Ids.load(from: "") // TODO
+        peerIds = Ids.load(from: .peerIds)
         if peerIds.expire(keepInterval: KeepPeerIdsInterval) {
-            peerIds.save(to: "")
+            peerIds.save(to: .peerIds)
         }
 
         // no pairing/bonding
@@ -194,7 +213,7 @@ public class BProximity :NSObject {
                     if let userId = UserId(data: data) {
                         log("Written Successful by \(userId)")
                         self.peerIds.append(userId)
-                        self.peerIds.save(to: "")
+                        self.peerIds.save(to: .peerIds)
                         self.debugNotify(identifier: "Written", message: "Written Successful by \(userId)")
                         return true
                     }
@@ -207,7 +226,7 @@ public class BProximity :NSObject {
                 if let val = value, let userId = UserId(data: val) {
                     log("Read Successful from \(userId)")
                     self.peerIds.append(userId)
-                    self.peerIds.save(to: "")
+                    self.peerIds.save(to: .peerIds)
                     self.debugNotify(identifier: "Read", message: "Read Successful from \(userId)")
                 }
             })
