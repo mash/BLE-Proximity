@@ -93,7 +93,13 @@ public class BProximity :NSObject {
     public override init() {
         super.init()
 
-        peripheralManager = PeripheralManager()
+        // no pairing/bonding
+        let read = CBMutableCharacteristic(type: Characteristic.ReadId.toCBUUID(), properties: .read, value: nil, permissions: .readable)
+        let write = CBMutableCharacteristic(type: Characteristic.WriteId.toCBUUID(), properties: .writeWithoutResponse, value: nil, permissions: .writeable)
+        let service = CBMutableService(type: Service.BProximity.toCBUUID(), primary: true)
+        service.characteristics = [read, write]
+
+        peripheralManager = PeripheralManager(services: [service])
             .onRead { [unowned self] (peripheral, ch) in
                 switch ch {
                 case .ReadId:

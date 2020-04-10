@@ -8,9 +8,6 @@
 import Foundation
 import CoreBluetooth
 
-typealias DidUpdateValue = (Characteristic, Data?, Error?)->()
-
-let PeripheralDidUpdateValueNotification = "PeripheralDidUpdateValueNotification"
 let PeripheralCharactersticUserInfoKey = "PeripheralCharactersticUserInfoKey"
 
 class Peripheral: NSObject {
@@ -104,15 +101,10 @@ class Peripheral: NSObject {
 extension Peripheral :CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         log("services=\(String(describing: peripheral.services)), error=\(String(describing: error))")
-        guard let services = peripheral.services else { return }
+        guard let discoveredServices = peripheral.services else { return }
 
-        for service in services {
-            // There are cases when there are many BProximity services in the array.
-            // We only need to discover characteristics for one of them.
-            if case .BProximity = Service.init(rawValue: service.uuid.uuidString) {
-                peripheral.discoverCharacteristics(nil, for: service)
-                return
-            }
+        for discoveredService in discoveredServices {
+            peripheral.discoverCharacteristics(nil, for: discoveredService)
         }
     }
 

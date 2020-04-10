@@ -10,7 +10,7 @@ import Foundation
 import CoreBluetooth
 
 enum Command {
-    case Read(from :Characteristic, didUpdate :DidUpdateValue)
+    case Read(from :Characteristic, didUpdate :(Characteristic, Data?, Error?)->())
     case Write(to :Characteristic, value :()->(Data))
     case Cancel(callback :(Peripheral)->())
 }
@@ -88,7 +88,7 @@ extension CentralManager :CBCentralManagerDelegate {
     }
 
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        log("peripheral=\(peripheral.identifier), rssi=\(RSSI)")
+        log("peripheral=\(peripheral.identifier.uuidString.prefix(8)), rssi=\(RSSI)")
         if peripherals[peripheral.identifier] == nil {
             addPeripheral(peripheral)
             central.connect(peripheral, options: nil)

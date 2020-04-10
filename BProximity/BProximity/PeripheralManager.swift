@@ -9,18 +9,20 @@
 import Foundation
 import CoreBluetooth
 
-typealias PeripheralManagerOnRead = (CBCentral, Characteristic)->(Data?)
-typealias PeripheralManagerOnWrite = (CBCentral, Characteristic, Data)->(Bool)
-
 class PeripheralManager :NSObject {
+    typealias OnRead = (CBCentral, Characteristic)->(Data?)
+    typealias OnWrite = (CBCentral, Characteristic, Data)->(Bool)
+
     private var started :Bool = false
     private var peripheralManager :CBPeripheralManager!
-    private var onRead :PeripheralManagerOnRead?
-    private var onWrite :PeripheralManagerOnWrite?
+    private var onRead :OnRead?
+    private var onWrite :OnWrite?
+    private var services :[CBMutableService]!
 
-    override init() {
+    init(services :[CBMutableService]) {
         let options = [CBPeripheralManagerOptionRestoreIdentifierKey: "PeripheralManager"]
         super.init()
+        self.services = services
         peripheralManager = CBPeripheralManager(delegate: self, queue: nil, options: options)
     }
 
@@ -37,16 +39,14 @@ class PeripheralManager :NSObject {
     private func startAdvertising() {
         guard peripheralManager.state == .poweredOn else { return }
 
-        // no pairing/bonding
-        let read = CBMutableCharacteristic(type: Characteristic.ReadId.toCBUUID(), properties: .read, value: nil, permissions: .readable)
-        let write = CBMutableCharacteristic(type: Characteristic.WriteId.toCBUUID(), properties: .writeWithoutResponse, value: nil, permissions: .writeable)
-        let service = CBMutableService(type: Service.BProximity.toCBUUID(), primary: true)
-        service.characteristics = [read, write]
         peripheralManager.removeAllServices()
-        peripheralManager.add(service)
+        services.forEach { (service) in
+            peripheralManager.add(service)
+        }
+        let uuids = services.map { (service) in service.uuid }
 
         let advertisementData = [
-            CBAdvertisementDataServiceUUIDsKey: [Service.BProximity.toCBUUID()]
+            CBAdvertisementDataServiceUUIDsKey: uuids
         ]
         peripheralManager.startAdvertising(advertisementData)
     }
@@ -55,12 +55,12 @@ class PeripheralManager :NSObject {
         peripheralManager.stopAdvertising()
     }
 
-    func onRead(callback :@escaping PeripheralManagerOnRead) -> PeripheralManager {
+    func onRead(callback :@escaping PeripheralManager.OnRead) -> PeripheralManager {
         onRead = callback
         return self
     }
 
-    func onWrite(callback :@escaping PeripheralManagerOnWrite) -> PeripheralManager {
+    func onWrite(callback :@escaping PeripheralManager.OnWrite) -> PeripheralManager {
         onWrite = callback
         return self
     }
