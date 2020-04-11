@@ -75,9 +75,9 @@ C-2. The app stores it's history of userIds that it generated
 
 D. When the app receives a silent push notification
 
-D-1. App fetches the Positive list from backend, and check if the history of userIds of this app is included in there
+D-1. App fetches the Positive list from backend, and checks if any peerId in the peerIds history stored on this app was included in the Positive list
 
-    Which means, that I have been near to an infected person.
+    If there was a match, then I have been near to an infected person.
 
 D-2. If it was included
 
