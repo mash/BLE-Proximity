@@ -23,18 +23,23 @@ Privacy is ensured by,
 Backend publishes 2 APIs.
 
 1. Fetch Positive list
+
     Positive list entry consists of:
     - userIds of infected people
+
     This can be a static text file that gets updated when E-2 happens.
+
 2. Append Positive list
-    This is going to be called when a person was diagnosed as positive.
+
+    This is going to be called when a person was diagnosed as positive.  
     See E.
 
 App maintains 2 history of userIds.
 
-1. My ID history
+1. My ID history  
     This is the history of userIds that was generated on this app.
-2. Peer ID history
+
+2. Peer ID history  
     This is the history of userIds that this app received from other apps.
 
 App runs this logic.
@@ -42,8 +47,9 @@ App runs this logic.
 A. Always:
 
 A-1. Advertises a BLE service
-    BLE service has a read characteristic that returns the app's userId.
-    BLE service has a write characteristic that lets other apps write their userIds into (*1)
+
+    BLE service has a read characteristic that returns the app's userId.  
+    BLE service has a write characteristic that lets other apps write their userIds into (*1)  
     Why not use iBeacon? (*2)
 
 A-2. Scans for the same BLE service
@@ -51,9 +57,10 @@ A-2. Scans for the same BLE service
 B. When the app detects an BLE peripheral that advertises the service:
 
 B-1. The app records:
-    - The userId of the opponent from the read characteristic response, or from the write characteristic request
-    - Time
-    - Location of *this* phone
+
+    - The userId of the opponent from the read characteristic response, or from the write characteristic request  
+    - Time  
+    - Location of *this* phone  
     and does *not* send this to backend.
 
 B-2. The app writes into the write characteristic that the BLE peripheral provides. (*1)
@@ -69,14 +76,17 @@ C-2. The app stores it's history of userIds that it generated
 D. When the app receives a silent push notification
 
 D-1. App fetches the Positive list from backend, and check if the history of userIds of this app is included in there
+
     Which means, that I have been near to an infected person.
 
 D-2. If it was included
+
     TODO: Instruct user to stay at home and monitor yourself, be able to export your own location data to provide to medical personel after consent.
 
 E. When the user knows that "I got infected" in a hospital
 
 E-1. Tells the backend:
+
     These are the userIds history of myself, during this 4 weeks.
     TODO: How to make this information trustworthy, maybe doctor should sign it? 
 
@@ -86,6 +96,7 @@ E-3. Backend sends a silent push notification to all apps so that they can refre
 
 ---
 Notes
+
 *1 We want to maximize the communication opportunity between iOS and Android apps, including when both are operating in the background.
 
 iOS has a limitation that it cannot advertise a service in the background in a way that is discoverable by Android phones.
