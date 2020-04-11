@@ -97,7 +97,6 @@ extension Ids {
     // You're going to see .. max 1k people in a day.
     // We want to keep records for 4 weeks.
     // max: 16B x 1k x 28 = 448kBytes
-    // Well it's ok to save into UserDefaults
     static func load(from :File) -> Ids {
         do {
             let data = try Data(contentsOf: from.url(), options: [])
