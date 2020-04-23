@@ -213,7 +213,7 @@ public class BProximity :NSObject {
                         log("Written Successful by \(userId)")
                         self.peerIds.append(userId)
                         self.peerIds.save(to: .peerIds)
-                        self.debugNotify(identifier: "Written", message: "Written Successful by \(userId)")
+                        self.debugNotify(identifier: NSUUID().uuidString, message: "Written Successful by \(userId)")
                         return true
                     }
                     log("data to UserId parse failed: \(data)")
@@ -226,7 +226,7 @@ public class BProximity :NSObject {
                     log("Read Successful from \(userId)")
                     self.peerIds.append(userId)
                     self.peerIds.save(to: .peerIds)
-                    self.debugNotify(identifier: "Read", message: "Read Successful from \(userId)")
+                    self.debugNotify(identifier: NSUUID().uuidString, message: "Read Successful from \(userId)")
                 }
             })
             .appendCommand(command: .Read(from: .ReadId))
