@@ -32,14 +32,11 @@ enum Service :String {
 enum Characteristic :String, CustomStringConvertible {
     typealias DidUpdateValue = (Characteristic, Data?, Error?)->()
 
-    case ReadId = "9F565547-7415-4EF7-8CDD-E2E9674EF033" // from `uuidgen`
-    case WriteId = "B222EBFF-99B4-4BC4-A2E4-717AEF9966A6" // from `uuidgen`
+    case ReadWriteId = "9F565547-7415-4EF7-8CDD-E2E9674EF033" // from `uuidgen`
 
     func toService() -> Service {
         switch self {
-        case .ReadId:
-            return .BProximity
-        case .WriteId:
+        case .ReadWriteId:
             return .BProximity
         }
     }
@@ -48,10 +45,8 @@ enum Characteristic :String, CustomStringConvertible {
     }
     public var description :String {
         switch self {
-        case .ReadId:
-            return "ReadId"
-        case .WriteId:
-            return "WriteId"
+        case .ReadWriteId:
+            return "ReadWriteId"
         }
     }
     static func fromCBCharacteristic(_ c :CBCharacteristic) -> Characteristic? {
@@ -190,25 +185,20 @@ public class BProximity :NSObject {
         }
 
         // no pairing/bonding
-        let read = CBMutableCharacteristic(type: Characteristic.ReadId.toCBUUID(), properties: .read, value: nil, permissions: .readable)
-        let write = CBMutableCharacteristic(type: Characteristic.WriteId.toCBUUID(), properties: .writeWithoutResponse, value: nil, permissions: .writeable)
+        let readWrite = CBMutableCharacteristic(type: Characteristic.ReadWriteId.toCBUUID(), properties: [.read, .write, .writeWithoutResponse], value: nil, permissions: [.readable, .writeable])
         let service = CBMutableService(type: Service.BProximity.toCBUUID(), primary: true)
-        service.characteristics = [read, write]
+        service.characteristics = [readWrite]
 
         peripheralManager = PeripheralManager(services: [service])
             .onRead { [unowned self] (peripheral, ch) in
                 switch ch {
-                case .ReadId:
+                case .ReadWriteId:
                     return self.myIds.last.data()
-                case .WriteId:
-                    return nil
                 }
             }
             .onWrite { [unowned self] (peripheral, ch, data) in
                 switch ch {
-                case .ReadId:
-                    return false
-                case .WriteId:
+                case .ReadWriteId:
                     if let userId = UserId(data: data) {
                         log("Written Successful by \(userId)")
                         self.peerIds.append(userId)
@@ -229,8 +219,8 @@ public class BProximity :NSObject {
                     self.debugNotify(identifier: NSUUID().uuidString, message: "Read Successful from \(userId)")
                 }
             })
-            .appendCommand(command: .Read(from: .ReadId))
-            .appendCommand(command: .Write(to: .WriteId, value: { [unowned self] in self.myIds.last.data() }))
+            .appendCommand(command: .Read(from: .ReadWriteId))
+            .appendCommand(command: .Write(to: .ReadWriteId, value: { [unowned self] in self.myIds.last.data() }))
             // This will make CentralManager re-discover the same peripheral and re-scan the services and re-read and re-write and loop. Let's not do that
             // .appendCommand(command: .Cancel(callback: { [unowned self] peripheral in self.centralManager.disconnect(peripheral) }))
     }
