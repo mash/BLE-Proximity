@@ -11,6 +11,7 @@
 		C7242553243F4688000770D1 /* Peripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7242552243F4688000770D1 /* Peripheral.swift */; };
 		C7242555243F4C05000770D1 /* PeripheralManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7242554243F4C05000770D1 /* PeripheralManager.swift */; };
 		C7242557243F4DA3000770D1 /* CentralManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7242556243F4DA3000770D1 /* CentralManager.swift */; };
+		C7846AB5249B6CC500CDC473 /* CBPeripheral+ShortId.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7846AB4249B6CC400CDC473 /* CBPeripheral+ShortId.swift */; };
 		C793F960243E0D76007DBDAC /* BProximity.swift in Sources */ = {isa = PBXBuildFile; fileRef = C793F95F243E0D76007DBDAC /* BProximity.swift */; };
 		C7FDFD5A243E08C8008565DC /* BProximity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C7FDFD50243E08C8008565DC /* BProximity.framework */; };
 		C7FDFD5F243E08C8008565DC /* BProximityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7FDFD5E243E08C8008565DC /* BProximityTests.swift */; };
@@ -32,6 +33,7 @@
 		C7242552243F4688000770D1 /* Peripheral.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Peripheral.swift; sourceTree = "<group>"; };
 		C7242554243F4C05000770D1 /* PeripheralManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralManager.swift; sourceTree = "<group>"; };
 		C7242556243F4DA3000770D1 /* CentralManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CentralManager.swift; sourceTree = "<group>"; };
+		C7846AB4249B6CC400CDC473 /* CBPeripheral+ShortId.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CBPeripheral+ShortId.swift"; sourceTree = "<group>"; };
 		C793F95F243E0D76007DBDAC /* BProximity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BProximity.swift; sourceTree = "<group>"; };
 		C7FDFD50243E08C8008565DC /* BProximity.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BProximity.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7FDFD53243E08C8008565DC /* BProximity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BProximity.h; sourceTree = "<group>"; };
@@ -82,9 +84,10 @@
 			isa = PBXGroup;
 			children = (
 				C7FDFD53243E08C8008565DC /* BProximity.h */,
-				C7FDFD54243E08C8008565DC /* Info.plist */,
 				C793F95F243E0D76007DBDAC /* BProximity.swift */,
+				C7846AB4249B6CC400CDC473 /* CBPeripheral+ShortId.swift */,
 				C7242556243F4DA3000770D1 /* CentralManager.swift */,
+				C7FDFD54243E08C8008565DC /* Info.plist */,
 				C7242550243F4633000770D1 /* Log.swift */,
 				C7242552243F4688000770D1 /* Peripheral.swift */,
 				C7242554243F4C05000770D1 /* PeripheralManager.swift */,
@@ -211,6 +214,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C7846AB5249B6CC500CDC473 /* CBPeripheral+ShortId.swift in Sources */,
 				C7242551243F4633000770D1 /* Log.swift in Sources */,
 				C7242555243F4C05000770D1 /* PeripheralManager.swift in Sources */,
 				C7242553243F4688000770D1 /* Peripheral.swift in Sources */,

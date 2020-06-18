@@ -24,27 +24,37 @@ import CoreBluetooth
 let PeripheralCharactersticUserInfoKey = "PeripheralCharactersticUserInfoKey"
 
 class Peripheral: NSObject {
-    let peripheral :CBPeripheral!
-    private let services :[CBUUID]
-    private var commands :[Command]
-    private var currentCommand :Command?
-    private var didUpdateValue :Characteristic.DidUpdateValue
+    let peripheral: CBPeripheral!
 
-    public var id :UUID {
+    private var queue: DispatchQueue
+    private let services: [Service]
+    private var commands: [Command]
+    private var currentCommand: Command?
+    private var didUpdateValue: CharacteristicDidUpdateValue?
+    private var didReadRSSI: DidReadRSSI?
+    private var timer: Timer?
+
+    var id: UUID {
         return peripheral.identifier
     }
+    var shortId: String {
+        return peripheral.shortId
+    }
 
-    init(peripheral: CBPeripheral, services :[CBUUID], commands :[Command], didUpdateValue :@escaping Characteristic.DidUpdateValue) {
+    init(peripheral: CBPeripheral, queue: DispatchQueue, services: [Service], commands: [Command], didUpdateValue: CharacteristicDidUpdateValue?, didReadRSSI: DidReadRSSI?) {
         self.peripheral = peripheral
+        self.queue = queue
         self.commands = commands
         self.services = services
         self.didUpdateValue = didUpdateValue
+        self.didReadRSSI = didReadRSSI
         super.init()
         self.peripheral.delegate = self
     }
 
     func discoverServices() {
-        peripheral.discoverServices(services)
+        let cbuuids = services.map { $0.toCBUUID() }
+        peripheral.discoverServices(cbuuids)
     }
 
     func nextCommand() {
@@ -52,41 +62,60 @@ class Peripheral: NSObject {
             currentCommand = nil
             return
         }
-        log()
         currentCommand = commands[0]
+        log("currentCommand=\(currentCommand!)")
         commands = commands.shift()
         execute(currentCommand!)
     }
 
-    func execute(_ command :Command) {
+    func execute(_ command: Command) {
         switch command {
-        case .Read(let from):
+        case .read(let from):
             if let ch = toCBCharacteristic(c12c: from) {
                 peripheral.readValue(for: ch)
             }
-            break
-        case .Write(let to, let value):
-            if let ch = toCBCharacteristic(c12c: to) {
-                peripheral.writeValue(value(), for: ch, type: .withoutResponse)
+        case .write(let to, let value):
+            if let ch = toCBCharacteristic(c12c: to), let val = value(self) {
+                peripheral.writeValue(val, for: ch, type: .withoutResponse)
             }
             nextCommand()
-            break
-        case .Cancel(let callback):
+        case .readRSSI:
+            peripheral.readRSSI()
+        case .scheduleCommands(let newCommands, let withTimeInterval, let repeatCount):
+            if repeatCount == 0 {
+                // Schedule finished
+                nextCommand()
+                return
+            }
+            timer = Timer(timeInterval: withTimeInterval, repeats: false) { [weak self] _ in
+                self?.queue.async {
+                    // Scheduled commands get executed first,
+                    var nextCommands = newCommands
+                    // and then continue the schedule,
+                    nextCommands.append(.scheduleCommands(commands: newCommands, withTimeInterval: withTimeInterval, repeatCount: repeatCount - 1))
+                    // and then continue the rest.
+                    nextCommands.append(contentsOf: self?.commands ?? [])
+                    self?.commands = nextCommands
+                    self?.nextCommand()
+                }
+            }
+            RunLoop.current.add(timer!, forMode: .common)
+
+        case .cancel(let callback):
+            timer?.invalidate()
             callback(self)
-            break
         }
     }
 
-    func writeValue(value :Data, forCharacteristic ch :Characteristic, type :CBCharacteristicWriteType) {
+    func writeValue(value: Data, forCharacteristic ch: Characteristic, type: CBCharacteristicWriteType) {
         if let c = self.toCBCharacteristic(c12c: ch) {
             self.peripheral.writeValue(value, for: c, type: type)
-        }
-        else {
+        } else {
             log("c12c=\(ch) not found")
         }
     }
 
-    func readValueForCharacteristic(c12c :Characteristic) throws {
+    func readValueForCharacteristic(c12c: Characteristic) throws {
         guard let c = self.toCBCharacteristic(c12c: c12c) else {
             log("c12c=\(c12c) not found")
             return
@@ -97,16 +126,16 @@ class Peripheral: NSObject {
 
     // MARK: - private utilities
 
-    func toCBCharacteristic(c12c :Characteristic) -> CBCharacteristic? {
+    func toCBCharacteristic(c12c: Characteristic) -> CBCharacteristic? {
         let findingC12CUUID = c12c.toCBUUID()
         let findingServiceUUID = c12c.toService().toCBUUID()
         if let services = self.peripheral.services {
             let foundService = services.first { service in
-                return findingServiceUUID.isEqual(service.uuid)
+                findingServiceUUID.isEqual(service.uuid)
             }
             if let c12cs = foundService?.characteristics {
                 return c12cs.first { c in
-                    return findingC12CUUID.isEqual(c.uuid)
+                    findingC12CUUID.isEqual(c.uuid)
                 }
             }
         }
@@ -114,9 +143,8 @@ class Peripheral: NSObject {
     }
 }
 
-extension Peripheral :CBPeripheralDelegate {
+extension Peripheral: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        log("services=\(String(describing: peripheral.services)), error=\(String(describing: error))")
         guard let discoveredServices = peripheral.services else { return }
 
         for discoveredService in discoveredServices {
@@ -125,8 +153,7 @@ extension Peripheral :CBPeripheralDelegate {
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        log("service=\(service), ch=\(String(describing: service.characteristics)), error=\(String(describing: error))")
-        if let _ = error {
+        if error != nil {
             return
         }
 
@@ -135,10 +162,10 @@ extension Peripheral :CBPeripheralDelegate {
 
     // This might happen regardless of calling or not calling readValue(for:)
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        log("peripheral=\(peripheral.identifier), ch=\(String(describing: Characteristic.fromCBCharacteristic(characteristic)))")
+        log("peripheral=\(shortId), ch=\(String(describing: Characteristic.fromCBCharacteristic(characteristic)))")
         if let ch = Characteristic.fromCBCharacteristic(characteristic) {
-            didUpdateValue(ch, characteristic.value, error)
-            if case .Read(let readCh) = currentCommand {
+            didUpdateValue?(self, ch, characteristic.value, error)
+            if case .read(let readCh) = currentCommand {
                 if readCh == ch {
                     // Read complete
                     nextCommand()
@@ -146,10 +173,19 @@ extension Peripheral :CBPeripheralDelegate {
             }
         }
     }
+
+    func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
+        log("peripheral=\(shortId), RSSI=\(RSSI), error=\(String(describing: error))")
+        if case .readRSSI = currentCommand {
+            didReadRSSI?(self, RSSI, error)
+            // ReadRSSI complete
+            nextCommand()
+        }
+    }
 }
 
-extension Array {
-    public func shift() -> Array {
+public extension Array {
+    func shift() -> Array {
         if count == 0 {
             return []
         }

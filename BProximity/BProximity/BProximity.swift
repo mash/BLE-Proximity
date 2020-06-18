@@ -21,6 +21,9 @@
 import Foundation
 import CoreBluetooth
 import UserNotifications
+import UIKit
+
+let peripheralName = "BProximity"
 
 enum Service :String {
     case BProximity = "8E99298E-65D6-4AF7-9074-731C66E01AF9" // from `uuidgen`
@@ -134,20 +137,38 @@ extension Ids {
     // TODO find
 }
 
-enum Command {
-    case Read(from :Characteristic)
-    case Write(to :Characteristic, value :()->(Data))
-    case Cancel(callback :(Peripheral)->())
+indirect enum Command: CustomStringConvertible {
+    case read(from: Characteristic)
+    case write(to: Characteristic, value: (Peripheral) -> (Data?))
+    case readRSSI
+    case scheduleCommands(commands: [Command], withTimeInterval: TimeInterval, repeatCount: Int)
+    case cancel(callback: (Peripheral) -> Void)
+    var description: String {
+        switch self {
+        case .read:
+            return "read"
+        case .write:
+            return "write"
+        case .readRSSI:
+            return "readRSSI"
+        case .scheduleCommands:
+            return "schedule"
+        case .cancel:
+            return "cancel"
+        }
+    }
 }
 
 public class BProximity :NSObject {
     static var instance :BProximity!
 
+    private let queue: DispatchQueue!
     private var peripheralManager :PeripheralManager!
     private var centralManager :CentralManager!
     private var started :Bool = false
     private var myIds :Ids!
     private var peerIds :Ids!
+    private var backgroundTaskId: UIBackgroundTaskIdentifier?
 
     public static func didFinishLaunching() {
         log()
@@ -172,6 +193,8 @@ public class BProximity :NSObject {
     }
 
     public override init() {
+        queue = DispatchQueue(label: "BProximity")
+
         super.init()
 
         myIds = Ids.load(from: .myIds)
@@ -189,7 +212,7 @@ public class BProximity :NSObject {
         let service = CBMutableService(type: Service.BProximity.toCBUUID(), primary: true)
         service.characteristics = [readWrite]
 
-        peripheralManager = PeripheralManager(services: [service])
+        peripheralManager = PeripheralManager(peripheralName: peripheralName, queue: queue, services: [service])
             .onRead { [unowned self] (peripheral, ch) in
                 switch ch {
                 case .ReadWriteId:
@@ -210,19 +233,42 @@ public class BProximity :NSObject {
                     return false
                 }
             }
-        centralManager = CentralManager(services: [Service.BProximity.toCBUUID()])
-            .didUpdateValue({ [unowned self] (ch, value, error) in
-                if let val = value, let userId = UserId(data: val) {
+        centralManager = CentralManager(queue: queue, services: [.BProximity])
+            .didDiscoverTxPower { uuid, txPower in
+            }
+            .appendCommand(
+                command: .readRSSI
+            )
+            .didReadRSSI { [unowned self] peripheral, RSSI, error in
+                log("peripheral=\(peripheral.shortId), RSSI=\(RSSI), error=\(String(describing: error))")
+
+                guard error == nil else {
+                    self.centralManager?.disconnect(peripheral)
+                    return
+                }
+                // Save RSSI
+            }
+            .appendCommand(
+                command: .write(to: .ReadWriteId, value: { [unowned self] peripheral in
+                    self.myIds.last.data()
+                })
+            )
+            .appendCommand(
+                command: .read(from: .ReadWriteId)
+            )
+            .didUpdateValue { [unowned self] peripheral, ch, data, error in
+                if let dat = data, let userId = UserId(data: dat) {
                     log("Read Successful from \(userId)")
                     self.peerIds.append(userId)
                     self.peerIds.save(to: .peerIds)
                     self.debugNotify(identifier: NSUUID().uuidString, message: "Read Successful from \(userId)")
                 }
-            })
-            .appendCommand(command: .Read(from: .ReadWriteId))
-            .appendCommand(command: .Write(to: .ReadWriteId, value: { [unowned self] in self.myIds.last.data() }))
-            // This will make CentralManager re-discover the same peripheral and re-scan the services and re-read and re-write and loop. Let's not do that
-            // .appendCommand(command: .Cancel(callback: { [unowned self] peripheral in self.centralManager.disconnect(peripheral) }))
+            }
+            .appendCommand(
+                command: .cancel(callback: { [unowned self] peripheral in
+                    self.centralManager?.disconnect(peripheral)
+                })
+            )
     }
 
     // TODO delete this

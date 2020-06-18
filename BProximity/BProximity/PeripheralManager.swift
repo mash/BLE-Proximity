@@ -21,21 +21,25 @@
 import Foundation
 import CoreBluetooth
 
-class PeripheralManager :NSObject {
-    typealias OnRead = (CBCentral, Characteristic)->(Data?)
-    typealias OnWrite = (CBCentral, Characteristic, Data)->(Bool)
+class PeripheralManager: NSObject {
+    typealias OnRead = (CBCentral, Characteristic) -> (Data?)
+    typealias OnWrite = (CBCentral, Characteristic, Data) -> (Bool)
 
-    private var started :Bool = false
-    private var peripheralManager :CBPeripheralManager!
-    private var onRead :OnRead?
-    private var onWrite :OnWrite?
-    private var services :[CBMutableService]!
+    private var started: Bool = false
+    private var peripheralManager: CBPeripheralManager!
+    private var onRead: OnRead?
+    private var onWrite: OnWrite?
 
-    init(services :[CBMutableService]) {
+    private let peripheralName: String
+    private let services: [CBMutableService]
+
+    init(peripheralName: String, queue: DispatchQueue, services: [CBMutableService]) {
         let options = [CBPeripheralManagerOptionRestoreIdentifierKey: "PeripheralManager"]
-        super.init()
+        self.peripheralName = peripheralName
         self.services = services
-        peripheralManager = CBPeripheralManager(delegate: self, queue: nil, options: options)
+        super.init()
+
+        peripheralManager = CBPeripheralManager(delegate: self, queue: queue, options: options)
     }
 
     func start() {
@@ -52,12 +56,13 @@ class PeripheralManager :NSObject {
         guard peripheralManager.state == .poweredOn else { return }
 
         peripheralManager.removeAllServices()
-        services.forEach { (service) in
+
+        services.forEach { service in
             peripheralManager.add(service)
         }
-        let uuids = services.map { (service) in service.uuid }
-
-        let advertisementData = [
+        let uuids = services.map { service in service.uuid }
+        let advertisementData: [String: Any] = [
+            CBAdvertisementDataLocalNameKey: peripheralName,
             CBAdvertisementDataServiceUUIDsKey: uuids
         ]
         peripheralManager.startAdvertising(advertisementData)
@@ -78,7 +83,7 @@ class PeripheralManager :NSObject {
     }
 }
 
-extension PeripheralManager :CBPeripheralManagerDelegate {
+extension PeripheralManager: CBPeripheralManagerDelegate {
     public func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         log("state=\(peripheral.state)")
         if peripheral.state == .poweredOn && started {
@@ -91,7 +96,7 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
-        log("request=\(request)")
+        log()
 
         guard let ch = Characteristic.fromCBCharacteristic(request.characteristic), let onRead = onRead else {
             peripheralManager.respond(to: request, withResult: .requestNotSupported)
@@ -107,14 +112,14 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
     // https://developer.apple.com/documentation/corebluetooth/cbperipheralmanagerdelegate/1393315-peripheralmanager
     // When you respond to a write request, note that the first parameter of the respond(to:withResult:) method expects a single CBATTRequest object, even though you received an array of them from the peripheralManager(_:didReceiveWrite:) method. To respond properly, pass in the first request of the requests array.
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
-        log("requests=\(requests)")
+        log()
 
-        if (requests.count == 0) {
+        if requests.count == 0 {
             return
         }
 
         var success = false
-        requests.forEach { (request) in
+        requests.forEach { request in
             guard let ch = Characteristic.fromCBCharacteristic(request.characteristic), let onWrite = onWrite, let val = request.value else {
                 return
             }
@@ -125,7 +130,7 @@ extension PeripheralManager :CBPeripheralManagerDelegate {
         peripheralManager.respond(to: requests[0], withResult: success ? .success : .unlikelyError)
     }
 
-    func peripheralManager(_ peripheral: CBPeripheralManager, willRestoreState dict: [String : Any]) {
+    func peripheralManager(_ peripheral: CBPeripheralManager, willRestoreState dict: [String: Any]) {
         log("dict=\(dict)")
     }
 }
